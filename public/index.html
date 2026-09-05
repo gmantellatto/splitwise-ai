@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4F46E5" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="SplitWise" />
+  <title>SplitWise Claude</title>
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-inner">
+        <span class="logo">💸 SplitWise</span>
+        <select id="group-select" class="group-select">
+          <option value="">Nenhum grupo</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- Chat messages -->
+    <main id="messages" class="messages" role="log" aria-live="polite">
+      <div class="message assistant">
+        <div class="bubble">
+          Olá! Sou seu assistente de divisão de despesas. 👋<br><br>
+          Para começar, diga algo como:<br>
+          <em>"Cria um grupo chamado Viagem com João, Ana e eu"</em>
+        </div>
+      </div>
+    </main>
+
+    <!-- Input area -->
+    <footer class="input-area">
+      <form id="chat-form" class="chat-form" autocomplete="off">
+        <textarea
+          id="user-input"
+          class="user-input"
+          placeholder="Digite sua mensagem..."
+          rows="1"
+          maxlength="2000"
+          required
+        ></textarea>
+        <button type="submit" id="send-btn" class="send-btn" aria-label="Enviar">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+            <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+          </svg>
+        </button>
+      </form>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script>
+    // Registra o Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/sw.js')
+        .catch(err => console.warn('SW não registrado:', err));
+    }
+  </script>
+</body>
+</html>
