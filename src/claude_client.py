@@ -16,35 +16,37 @@ claude_client.py — Núcleo da integração com a Claude API.
 import json
 import time
 import anthropic
+import os
 from typing import Generator
+from dotenv import load_dotenv
+from src.storage import db
+from src.models import Group
 
 from src.tools.definitions import TOOLS
 
-# --- Dispatcher de tools ---
-# Mapeia o nome da tool (string que Claude retorna) para a função Python.
-# TODO: importe as funções de groups.py, expenses.py e settlements.py
-#       e adicione cada uma no dicionário abaixo.
-TOOL_DISPATCH: dict = {
-    # "criar_grupo": criar_grupo,
-    # "adicionar_participante": adicionar_participante,
-    # ... complete com todas as 6 tools
+from src.tools.groups import criar_grupo, adicionar_participante
+from src.tools.expenses import adicionar_despesa, listar_despesas
+from src.tools.settlements import calcular_saldos, otimizar_liquidacoes
+
+load_dotenv()
+
+TOOL_DISPATCH = {
+    "criar_grupo": criar_grupo,
+    "adicionar_participante": adicionar_participante,
+    "adicionar_despesa": adicionar_despesa,
+    "listar_despesas": listar_despesas,
+    "calcular_saldos": calcular_saldos,
+    "otimizar_liquidacoes": otimizar_liquidacoes,
 }
 
 
 def _select_model(message: str) -> str:
-    """
-    TODO: Implemente a seleção de modelo por intenção.
+    modelo_raciocinio = ["sonnet", "opus", "fable"]
 
-    Regra de negócio:
-    - Se a mensagem mencionar "otimizar", "liquidar", "menos transferências",
-      "eficiente" → use "claude-sonnet-4-5" (raciocínio mais pesado)
-    - Caso contrário → use "claude-haiku-4-5" (mais rápido e barato)
-
-    Conceito CCDV-F: decisão deliberada de modelo por custo/qualidade.
-    Esta função representa o trade-off que a prova cobra.
-    """
-    # TODO: implemente aqui
-    return "claude-haiku-4-5"  # padrão enquanto não implementa
+    if any(p in message.lower() for p in modelo_raciocinio):
+        return os.environ["ANTHROPIC_DEFAULT_SONNET_MODEL"]
+        
+    return os.environ["ANTHROPIC_DEFAULT_HAIKU_MODEL"]
 
 
 SYSTEM_PROMPT = """Você é um assistente amigável para divisão de despesas em grupo.
@@ -82,80 +84,77 @@ def chat_stream(
     group_id: str | None,
     history: list[dict]
 ) -> Generator[str, None, None]:
-    """
-    Gera chunks de texto via SSE para o frontend.
 
-    Fluxo:
-    1. Chama Claude com streaming + tools
-    2. Se Claude retornar tool_use → executa a tool, retorna resultado, chama novamente
-    3. Faz yield de cada chunk de texto recebido
-    4. Trata erros da API com retry onde apropriado
+    token = os.environ["ANTHROPIC_AUTH_TOKEN"]
+    url = os.environ["ANTHROPIC_BASE_URL"]
 
-    TODO: Implemente esta função seguindo os passos abaixo.
+    client = anthropic.Anthropic(
+        api_key=token,
+        base_url=url,
+        default_headers={"Authorization": f"Bearer {token}"}
+    )
 
-    PASSO 1 — Montar as mensagens
-    ─────────────────────────────
-    Adicione a mensagem atual do usuário ao histórico.
-    Se group_id existir, inclua no contexto:
-      "Grupo ativo: {group_id}"
+    # Passo 1 — Montar mensagens
+    messages = list(history)
+    user_content = f"[Grupo ativo: {group_id}]\n\n{message}" if group_id else message
+    messages.append({"role": "user", "content": user_content})
 
-    PASSO 2 — Primeira chamada com streaming
-    ─────────────────────────────────────────
-    Use client.messages.stream(...) com:
-      - model: _select_model(message)
-      - max_tokens: 4096
-      - system: SYSTEM_PROMPT
-      - tools: TOOLS
-      - messages: histórico montado
-
-    Faça yield de cada chunk via stream.text_stream.
-
-    PASSO 3 — Verificar stop_reason
-    ────────────────────────────────
-    Após o stream terminar, pegue a mensagem final:
-      final = stream.get_final_message()
-
-    Se final.stop_reason == "tool_use":
-      → Entre no loop de tool use (PASSO 4)
-
-    Se final.stop_reason == "max_tokens":
-      → Faça yield de "\n\n⚠️ Resposta cortada (max_tokens atingido)."
-
-    PASSO 4 — Loop de tool use
-    ───────────────────────────
-    Para cada bloco em final.content onde block.type == "tool_use":
-      a) Faça yield de f"\n🔧 Executando: {block.name}...\n"
-      b) Execute: result = _execute_tool(block.name, block.input)
-      c) Monte a mensagem de retorno:
-         messages.append({"role": "assistant", "content": final.content})
-         messages.append({
-           "role": "user",
-           "content": [{
-             "type": "tool_result",
-             "tool_use_id": block.id,
-             "content": result
-           }]
-         })
-
-    Depois das tools, faça uma nova chamada (sem streaming desta vez, ou
-    com streaming — sua escolha) e faça yield do texto final.
-
-    PASSO 5 — Error handling
-    ─────────────────────────
-    Envolva tudo em try/except:
+    # Passo 5 - Erro Handling
+    try:
+        # Passo 2 — Primeira chamada com streaming
+            with client.messages.stream(
+                model=_select_model(message),
+                max_tokens=4096,
+                system=SYSTEM_PROMPT,
+                tools=TOOLS,
+                messages=messages
+            ) as stream:
+                for text in stream.text_stream:
+                    yield text
+                final = stream.get_final_message()
+        
+            # Passo 3 — Verificar stop_reason
+            if final.stop_reason == "max_tokens":
+                yield "\n\n⚠️ Resposta cortada (max_tokens atingido)."
+                return
+        
+            # Passo 4 — Loop de tool use
+            if final.stop_reason == "tool_use":
+        
+                # Assistant entra uma única vez no histórico
+                messages.append({"role": "assistant", "content": final.content})
+        
+                # Coleta todos os resultados das tools
+                tool_results = []
+                for block in final.content:
+                    if block.type == "tool_use":
+                        yield f"\n🔧 Executando: {block.name}...\n"
+                        result = _execute_tool(block.name, block.input)
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": result
+                        })
+        
+                # Uma única mensagem user com todos os resultados
+                messages.append({"role": "user", "content": tool_results})
+        
+                # Follow-up — Claude processa os resultados e responde
+                follow_up = client.messages.create(
+                    model=_select_model(message),
+                    max_tokens=4096,
+                    system=SYSTEM_PROMPT,
+                    tools=TOOLS,
+                    messages=messages
+                )
+                yield follow_up.content[0].text
 
     except anthropic.RateLimitError:
-      → yield mensagem de erro + aguarde 30s (não faça retry automático aqui,
-        deixe o usuário saber o que aconteceu)
-
+        yield "\n⚠️ Limite de requisições atingido. Aguarde 30 segundos."
     except anthropic.BadRequestError as e:
-      → yield f"Erro na requisição: {e}" (não tente retry — é problema no código)
-
+        yield f"\n⚠️ Erro na requisição: {e}"
     except anthropic.APIError as e:
-      → yield f"Erro da API ({e.status_code}): tente novamente"
-    """
+        yield f"\n⚠️ Erro da API ({e.status_code}): tente novamente."
+        
 
-    client = anthropic.Anthropic()
 
-    # TODO: implemente os 5 passos descritos acima
-    yield "claude_client.py ainda não implementado. Complete os TODOs!"
