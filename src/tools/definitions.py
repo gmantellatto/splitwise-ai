@@ -214,6 +214,26 @@ otimizar_liquidacoes = {
     }
 }
 
+excluir_grupo = {
+    "name": "excluir_grupo",
+    "description": (
+        "Exclui permanentemente um grupo e todas as suas despesas. "
+        "Use quando o usuário quiser deletar ou remover um grupo inteiro. "
+        "Exemplos: 'exclua o grupo da viagem', 'delete esse grupo', 'remova o grupo'. "
+        "ATENÇÃO: esta ação é irreversível — todas as despesas e participantes são perdidos."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": "ID único do grupo a ser excluído."
+            }
+        },
+        "required": ["group_id"]
+    }
+}
+
 remover_participante = {
     "name": "remover_participante",
     "description": (
@@ -392,6 +412,7 @@ desfazer_operacao = {
 
 TOOLS: list[dict] = [
     criar_grupo,
+    excluir_grupo,
     adicionar_participante,
     remover_participante,
     renomear_participante,

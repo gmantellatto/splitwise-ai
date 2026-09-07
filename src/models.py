@@ -37,3 +37,29 @@ class ChatRequest(BaseModel):
     message: str
     group_id: Optional[str] = None   # None quando ainda não há grupo ativo
     session_id: Optional[str] = None  # identifica a conversa; frontend gera um UUID
+
+
+# --- Modelos para endpoints REST da UI ---
+
+class CreateGroupRequest(BaseModel):
+    name: str
+    participants: list[str]
+
+class AddParticipantRequest(BaseModel):
+    participant: str
+
+class RenameParticipantRequest(BaseModel):
+    old_name: str
+    new_name: str
+
+class AddExpenseRequest(BaseModel):
+    description: str
+    amount: float
+    paid_by: str
+    split_among: list[str]
+
+class EditExpenseRequest(BaseModel):
+    description: Optional[str] = None
+    amount: Optional[float] = None
+    paid_by: Optional[str] = None
+    split_among: Optional[list[str]] = None

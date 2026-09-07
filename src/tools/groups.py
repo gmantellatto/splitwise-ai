@@ -148,6 +148,18 @@ def renomear_participante(group_id: str, old_name: str, new_name: str) -> dict:
 
 # ── Listar / detalhes ────────────────────────────────────────────────────────
 
+def excluir_grupo(group_id: str) -> dict:
+    """Remove permanentemente o grupo e todas as suas despesas."""
+    grupo = db.get_group(group_id)
+    if grupo is None:
+        return {"error": "Grupo não encontrado."}
+
+    nome = grupo.name
+    db.delete_group(group_id)
+
+    return {"message": f"Grupo '{nome}' excluído com sucesso."}
+
+
 def listar_grupos() -> dict:
     """Retorna todos os grupos existentes com seus participantes."""
     grupos = db.get_all_groups()

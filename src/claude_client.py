@@ -20,8 +20,8 @@ from dotenv import load_dotenv
 
 from src.tools.definitions import TOOLS
 from src.tools.groups import (
-    criar_grupo, adicionar_participante,
-    remover_participante, renomear_participante,
+    criar_grupo, excluir_grupo,
+    adicionar_participante, remover_participante, renomear_participante,
     listar_grupos, obter_detalhes_grupo,
 )
 from src.tools.expenses import adicionar_despesa, listar_despesas, editar_despesa, remover_despesa
@@ -36,6 +36,7 @@ SESSION_HISTORY: dict[str, list[dict]] = {}
 
 TOOL_DISPATCH = {
     "criar_grupo": criar_grupo,
+    "excluir_grupo": excluir_grupo,
     "adicionar_participante": adicionar_participante,
     "remover_participante": remover_participante,
     "renomear_participante": renomear_participante,
