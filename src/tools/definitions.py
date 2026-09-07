@@ -19,10 +19,6 @@ Referência de tipos de parâmetro:
   "required": ["campo"]      → campos obrigatórios da tool
 """
 
-# TODO 1: Defina a tool `criar_grupo`
-# Deve receber: nome do grupo (string) e lista de participantes (array de strings)
-# Dica de descrição: explique *quando* Claude deve chamar essa tool,
-# não apenas o que ela faz.
 criar_grupo = {
     "name": "criar_grupo",
 
@@ -57,52 +53,172 @@ criar_grupo = {
 }
 
 
-# TODO 2: Defina a tool `adicionar_participante`
-# Deve receber: group_id (string) e nome do participante (string)
+adicionar_participante = {
+    "name": "adicionar_participante",
 
-
-# TODO 3: Defina a tool `adicionar_despesa`
-# Deve receber: group_id, descrição, valor (number), quem pagou (string),
-# e entre quem dividir (array de strings — pode ser subconjunto do grupo)
-
-# TODO 4: Defina a tool `listar_despesas`
-# Deve receber apenas: group_id
-
-# TODO 5: Defina a tool `calcular_saldos`
-# Deve receber apenas: group_id
-
-# TODO 6: Defina a tool `otimizar_liquidacoes`
-# Deve receber apenas: group_id
-# Dica: a descrição deve deixar claro que essa tool usa um algoritmo
-# mais pesado — Claude deve preferi-la quando o usuário pede
-# "menor número de transferências" ou "jeito mais eficiente de pagar"
-
-
-# Quando terminar os TODOs, exporte a lista assim:
-# TOOLS: list[dict] = [criar_grupo, adicionar_participante, ...]
-#
-# Exemplo de estrutura de uma tool completa para referência:
-EXEMPLO_TOOL = {
-    "name": "exemplo",
     "description": (
-        "Descrição clara de quando usar essa tool. "
-        "Quanto mais específica, melhor Claude vai selecioná-la."
+        "Adiciona um novo participante a um grupo já existente. "
+        "Use quando o usuário quiser adicionar um participante a um grupo, por exemplo: "
+        "'adicione Maria ao grupo de viagem', 'novo participante do grupo viagem: Maria', "
+        "'Maria deve fazer parte do grupo do ano novo'. "
+        "NÃO deve ser usado se o grupo não existe. — "
+        "para isso use criar_grupo."
+    ),
+
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": (
+                    "ID único do grupo, retornado pela tool criar_grupo. "
+                    "Use o group_id da resposta mais recente de criar_grupo ou listar_grupos."
+                )
+            },
+            "participant": {
+                "type": "string",
+                "description": (
+                    "Nome do novo participante que será incluído no grupo. "
+                    "Inclua o próprio usuário se ele mencionou 'eu' ou 'comigo'."
+                )
+            }
+        },
+        "required": ["group_id", "participant"]
+    }
+}
+
+
+adicionar_despesa = {
+    "name": "adicionar_despesa",
+
+    "description": (
+        "Adiciona uma nova despesa a um grupo existente. "
+        "Use quando o usuário quiser adicionar alguma despesa paga a um grupo já existente. Exemplo: "
+        "'Adicione o jantar de ontem pago por mim ao grupo do trabalho. Valor total R$300,00. Além de mim, Maria e Paulo "
+        "estavam presentes.' "
+        "O responsável por pagar a despesa deve ser participante do grupo. "
+        "Todos os participantes da despesa também devem ser participantes do grupo."
+    ),
+
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": (
+                  "ID único do grupo, retornado pela tool criar_grupo. "
+                  "Use o group_id da resposta mais recente de criar_grupo ou listar_grupos."
+                )
+            },
+            "description": {
+                "type": "string",
+                "description": (
+                  "Descrição da despesa a ser incluída. Exemplos: 'Gasolina', 'Compras Mercado', 'Ingressos Cinema'."
+                )
+            },
+            "amount": {
+                "type": "number",
+                "description": (
+                  "Valor total da despesa. "
+                  "O valor deve ser maior do que zero."
+                )
+            },
+            "paid_by": {
+                "type": "string",
+                "description": (
+                  "Responsável pelo pagamento da despesa. Quem efetuou o pagamento e gastou o valor. "
+                  "Inclua o próprio usuário quando ele citar algo como 'eu', 'meu'."
+                )
+            },
+            "split_among": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": (
+                    "Lista com os nomes dos participantes da despesa. "
+                    "Mínimo 1 pessoa. Exemplo: ['João']. "
+                    "Inclua todos que participaram da despesa, incluindo quem pagou. "
+                    "O fato de alguém ter pagado não o exclui de dividir o custo."
+                    
+                )
+            }
+        },
+        "required": ["group_id", "description", "amount", "paid_by", "split_among"]
+    }
+}
+
+listar_despesas = {
+    "name": "listar_despesas",
+    "description": (
+        "Lista todas as despesas e gastos de um grupo. "
+        "Use quando o usuário precisar saber tudo o que foi gasto naquele grupo fornecido. "
+        "Deve listar apenas as despesas referentes ao grupo fornecido."
     ),
     "input_schema": {
         "type": "object",
         "properties": {
-            "param_obrigatorio": {
+            "group_id": {
                 "type": "string",
-                "description": "O que esse parâmetro representa."
-            },
-            "param_opcional": {
-                "type": "number",
-                "description": "Valor numérico. Padrão: 0 se não informado."
+                "description": (
+                  "ID único do grupo, retornado pela tool criar_grupo. "
+                  "Use o group_id da resposta mais recente de criar_grupo ou listar_grupos."
+                )
             }
         },
-        "required": ["param_obrigatorio"]
+        "required": ["group_id"]
     }
 }
 
-# Remova EXEMPLO_TOOL da lista final — é só referência.
-TOOLS: list[dict] = []  # ← substitua [] pela sua lista de tools
+calcular_saldos = {
+    "name": "calcular_saldos",
+    "description": (
+        "Calcula o saldo de todos os participantes de um grupo. "
+        "Use quando precisar saber o quanto um ou todos os participantes do grupo devem / precisam receber. "
+        "NÃO use quando o usuário pedir o jeito mais eficiente ou menos transferências — "
+        "para isso use otimizar_liquidacoes."
+
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": (
+                  "ID único do grupo, retornado pela tool criar_grupo. "
+                  "Use o group_id da resposta mais recente de criar_grupo ou listar_grupos."
+                )
+            }
+        },
+        "required": ["group_id"]
+    }
+}
+
+otimizar_liquidacoes = {
+    "name": "otimizar_liquidacoes",
+    "description": (
+        "Utiliza um algoritmo mais elaborado para calcular de forma otimizada as transferencias finais para quitar as dívidas. "
+        "Use quando o usuário pedir o jeito mais eficiente de pagar as despesas ou para reduzir ao máximo o número de transferências. "
+        "Deve utilizar o altoritmo pesado e considerar todas as despesas e seus participantes, a fim de solucionar o problema."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": (
+                  "ID único do grupo, retornado pela tool criar_grupo. "
+                  "Use o group_id da resposta mais recente de criar_grupo ou listar_grupos."
+                )
+            }
+        },
+        "required": ["group_id"]
+    }
+}
+
+TOOLS: list[dict] = [
+                        criar_grupo, 
+                        adicionar_participante, 
+                        adicionar_despesa, 
+                        listar_despesas, 
+                        calcular_saldos, 
+                        otimizar_liquidacoes
+                    ]
