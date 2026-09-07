@@ -11,6 +11,10 @@ const groupSel   = document.getElementById('group-select');
 
 let activeGroupId = null;
 
+// session_id identifica esta conversa no servidor para manter o histórico.
+// Gerado uma única vez por carregamento de página.
+const SESSION_ID = crypto.randomUUID();
+
 // ── Carregar grupos ao iniciar ──
 async function loadGroups() {
   try {
@@ -21,6 +25,7 @@ async function loadGroups() {
       const opt = document.createElement('option');
       opt.value = g.id;
       opt.textContent = `${g.name} (${g.participants.join(', ')})`;
+      opt.selected = (g.id === activeGroupId); // marca selected antes de inserir no DOM
       groupSel.appendChild(opt);
     });
   } catch (e) {
@@ -87,7 +92,7 @@ form.addEventListener('submit', async (e) => {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, group_id: activeGroupId })
+      body: JSON.stringify({ message, group_id: activeGroupId, session_id: SESSION_ID })
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

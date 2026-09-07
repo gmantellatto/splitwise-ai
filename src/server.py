@@ -6,6 +6,7 @@ Leia e entenda o fluxo, mas não precisa modificar para começar.
 """
 
 import json
+import uuid
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -40,15 +41,16 @@ async def chat(request: ChatRequest):
     Cada evento SSE tem o formato:
       data: <payload>\n\n
     """
-    # Histórico simplificado: em produção você armazenaria por sessão
-    history: list[dict] = []
+    # session_id identifica a conversa — gerado pelo frontend e enviado em cada request.
+    # Se não vier (ex: chamadas diretas à API), criamos um ID descartável.
+    session_id = request.session_id or str(uuid.uuid4())
 
     def event_generator():
         try:
             for chunk in chat_stream(
                 message=request.message,
                 group_id=request.group_id,
-                history=history
+                session_id=session_id,
             ):
                 # Formato SSE: "data: <conteúdo>\n\n"
                 payload = json.dumps({"text": chunk}, ensure_ascii=False)

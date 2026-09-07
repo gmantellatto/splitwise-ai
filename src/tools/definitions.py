@@ -214,11 +214,194 @@ otimizar_liquidacoes = {
     }
 }
 
+remover_participante = {
+    "name": "remover_participante",
+    "description": (
+        "Remove um participante de um grupo existente. "
+        "Use quando o usuário quiser retirar alguém do grupo, por exemplo: "
+        "'remova João do grupo', 'tire a Ana daqui'. "
+        "ATENÇÃO: falha automaticamente se o participante tiver despesas registradas — "
+        "nesse caso, oriente o usuário a remover ou editar as despesas antes. "
+        "NÃO use para corrigir nomes — para isso use renomear_participante."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": "ID único do grupo."
+            },
+            "participant": {
+                "type": "string",
+                "description": "Nome exato do participante a ser removido."
+            }
+        },
+        "required": ["group_id", "participant"]
+    }
+}
+
+renomear_participante = {
+    "name": "renomear_participante",
+    "description": (
+        "Renomeia um participante existente, atualizando seu nome em todas as despesas do grupo. "
+        "Use para corrigir erros de digitação ou nomes incorretos, por exemplo: "
+        "'corrija o nome de Gustao para Gustavo', 'o nome certo é Maria, não Mari'. "
+        "Atualiza automaticamente paid_by e split_among em todas as despesas."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": "ID único do grupo."
+            },
+            "old_name": {
+                "type": "string",
+                "description": "Nome atual (incorreto) do participante."
+            },
+            "new_name": {
+                "type": "string",
+                "description": "Novo nome (correto) do participante."
+            }
+        },
+        "required": ["group_id", "old_name", "new_name"]
+    }
+}
+
+editar_despesa = {
+    "name": "editar_despesa",
+    "description": (
+        "Edita uma despesa já registrada em um grupo. "
+        "Use quando o usuário quiser corrigir valor, descrição, quem pagou ou como foi dividida. "
+        "Exemplos: 'corrija o valor do jantar para R$250', 'a hospedagem foi paga por João, não por Ana', "
+        "'edite a descrição da despesa X'. "
+        "Apenas os campos fornecidos são alterados — os demais ficam inalterados. "
+        "Use listar_despesas para obter o expense_id antes de editar."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": "ID único do grupo."
+            },
+            "expense_id": {
+                "type": "string",
+                "description": "ID único da despesa (obtido via listar_despesas)."
+            },
+            "description": {
+                "type": "string",
+                "description": "Nova descrição da despesa. Omita para não alterar."
+            },
+            "amount": {
+                "type": "number",
+                "description": "Novo valor da despesa. Deve ser maior que zero. Omita para não alterar."
+            },
+            "paid_by": {
+                "type": "string",
+                "description": "Nome do novo responsável pelo pagamento. Deve ser participante do grupo. Omita para não alterar."
+            },
+            "split_among": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Nova lista de quem divide a despesa. Todos devem ser participantes do grupo. Omita para não alterar."
+            }
+        },
+        "required": ["group_id", "expense_id"]
+    }
+}
+
+remover_despesa = {
+    "name": "remover_despesa",
+    "description": (
+        "Remove uma despesa do grupo pelo seu ID. "
+        "Use quando o usuário quiser deletar um lançamento duplicado ou incorreto. "
+        "Exemplos: 'apague a despesa de gasolina', 'remova esse lançamento duplicado'. "
+        "Use listar_despesas para obter o expense_id antes de remover."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": "ID único do grupo."
+            },
+            "expense_id": {
+                "type": "string",
+                "description": "ID único da despesa a ser removida (obtido via listar_despesas)."
+            }
+        },
+        "required": ["group_id", "expense_id"]
+    }
+}
+
+listar_grupos = {
+    "name": "listar_grupos",
+    "description": (
+        "Lista todos os grupos de despesas existentes com seus participantes. "
+        "Use quando o usuário quiser ver todos os grupos disponíveis, alternar entre grupos, "
+        "ou quando precisar encontrar um group_id específico. "
+        "Exemplos: 'quais grupos eu tenho?', 'mostre todos os grupos', 'lista os grupos'."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {}
+    }
+}
+
+obter_detalhes_grupo = {
+    "name": "obter_detalhes_grupo",
+    "description": (
+        "Retorna informações completas de um grupo: nome, membros, número de despesas, "
+        "total gasto e quantas operações podem ser desfeitas. "
+        "Use antes de adicionar despesas para validar participantes, "
+        "ou quando o usuário pedir detalhes de um grupo específico."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": "ID único do grupo."
+            }
+        },
+        "required": ["group_id"]
+    }
+}
+
+desfazer_operacao = {
+    "name": "desfazer_operacao",
+    "description": (
+        "Desfaz a última operação realizada em um grupo, revertendo ao estado anterior. "
+        "Use quando o usuário pedir para desfazer, corrigir ou reverter a última ação. "
+        "Exemplos: 'desfaça isso', 'volte ao estado anterior', 'undo', 'errei, desfaz'. "
+        "Funciona para: adicionar/remover/renomear participante, adicionar/editar/remover despesa. "
+        "IMPORTANTE: o histórico é mantido apenas enquanto o servidor está rodando."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": "ID único do grupo cuja última operação deve ser desfeita."
+            }
+        },
+        "required": ["group_id"]
+    }
+}
+
 TOOLS: list[dict] = [
-                        criar_grupo, 
-                        adicionar_participante, 
-                        adicionar_despesa, 
-                        listar_despesas, 
-                        calcular_saldos, 
-                        otimizar_liquidacoes
-                    ]
+    criar_grupo,
+    adicionar_participante,
+    remover_participante,
+    renomear_participante,
+    adicionar_despesa,
+    listar_despesas,
+    editar_despesa,
+    remover_despesa,
+    calcular_saldos,
+    otimizar_liquidacoes,
+    listar_grupos,
+    obter_detalhes_grupo,
+    desfazer_operacao,
+]

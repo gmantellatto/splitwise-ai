@@ -35,4 +35,5 @@ class Database(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    group_id: Optional[str] = None  # None quando ainda não há grupo ativo
+    group_id: Optional[str] = None   # None quando ainda não há grupo ativo
+    session_id: Optional[str] = None  # identifica a conversa; frontend gera um UUID
